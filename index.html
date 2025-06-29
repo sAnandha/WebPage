@@ -3,64 +3,73 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Redirecting...</title>
+  <title>Redirecting to Cognito...</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #e0f7fa, #e1bee7);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
       margin: 0;
+      font-family: system-ui, sans-serif;
+      background: linear-gradient(135deg, #f7f3ff 50%, #f0eaff 50%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
     }
-    .message {
+
+    .container {
       background: white;
-      padding: 2rem;
-      border-radius: 10px;
+      padding: 2rem 3rem;
+      border-radius: 12px;
       box-shadow: 0 0 15px rgba(0,0,0,0.1);
       text-align: center;
     }
-    .loader {
+
+    h1 {
+      font-size: 1.8rem;
+      color: #111;
+    }
+
+    p {
+      font-size: 1rem;
+      color: #333;
       margin-top: 1rem;
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #6200ea;
+    }
+
+    .spinner {
+      margin-top: 2rem;
+      border: 5px solid #eee;
+      border-top: 5px solid #006aff;
       border-radius: 50%;
-      width: 30px;
-      height: 30px;
+      width: 40px;
+      height: 40px;
       animation: spin 1s linear infinite;
       display: inline-block;
     }
+
     @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+      to { transform: rotate(360deg); }
     }
   </style>
 </head>
 <body>
-  <div class="message">
-    <h2>Signing you in...</h2>
-    <div class="loader"></div>
+  <div class="container">
+    <h1>Redirecting to Sign In...</h1>
+    <p>Please wait while we connect you to the secure login.</p>
+    <div class="spinner"></div>
   </div>
 
   <script>
+    const domain = "https://us-east-1e1v33d9fq.auth.us-east-1.amazoncognito.com";
     const clientId = "2g17vttj8eeb7fhacugmmfnkeq";
     const redirectUri = "https://main.de43hd7rcr7qe.amplifyapp.com/dashboard.html";
-    const cognitoDomain = "https://us-east-1e1v33d9fq.auth.us-east-1.amazoncognito.com";
+    const logoutUri = "https://main.de43hd7rcr7qe.amplifyapp.com";
 
-    // 1. Logout (clears the session)
-    const logoutUrl = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${encodeURIComponent(window.location.href + "?logout=true")}`;
+    const isReturning = window.location.href.includes("logoutComplete");
 
-    // 2. Login
-    const loginUrl = `${cognitoDomain}/login?client_id=${clientId}&response_type=code&scope=email+openid+phone&redirect_uri=${encodeURIComponent(redirectUri)}`;
-
-    const urlParams = new URLSearchParams(window.location.search);
-
-    // Step 1: Logout
-    if (!urlParams.has("logout")) {
+    if (!isReturning) {
+      const logoutUrl = `${domain}/logout?client_id=${clientId}&logout_uri=${encodeURIComponent(logoutUri + "?logoutComplete=true")}`;
       window.location.href = logoutUrl;
     } else {
-      // Step 2: Login after logout
+      const loginUrl = `${domain}/login?client_id=${clientId}&response_type=code&scope=email+openid+phone&redirect_uri=${encodeURIComponent(redirectUri)}`;
       window.location.href = loginUrl;
     }
   </script>
