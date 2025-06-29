@@ -1,16 +1,30 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Redirecting to Cognito</title>
+  <title>Loading...</title>
   <meta charset="UTF-8" />
-  <script>
-    const loginUrl = "https://us-east-1e1v33d9fq.auth.us-east-1.amazoncognito.com/login"
-      + "?client_id=2g17vttj8eeb7fhacugmmfnkeq"
-      + "&response_type=code"
-      + "&scope=email+openid+phone"
-      + "&redirect_uri=https%3A%2F%2Fmain.de43hd7rcr7qe.amplifyapp.com%2Fdashboard.html";
-    window.location.href = loginUrl;
-  </script>
+  <script src="https://cdn.jsdelivr.net/npm/oidc-client-ts@2.1.1/dist/browser/oidc-client.min.js"></script>
 </head>
-<body></body>
+<body>
+  <script>
+    const mgr = new oidc.UserManager({
+      authority: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_E1V33d9fq",
+      client_id: "2g17vttj8eeb7fhacugmmfnkeq",
+      redirect_uri: "https://main.de43hd7rcr7qe.amplifyapp.com/dashboard.html",
+      response_type: "code",
+      scope: "openid email phone"
+    });
+
+    // Try to load user session
+    mgr.getUser().then(function(user) {
+      if (user && !user.expired) {
+        // Already signed in
+        window.location.href = "dashboard.html";
+      } else {
+        // Not signed in, start login
+        mgr.signinRedirect();
+      }
+    });
+  </script>
+</body>
 </html>
