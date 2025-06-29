@@ -1,31 +1,23 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Dashboard</title>
 </head>
 <body>
-  <h2>User Dashboard</h2>
-  <button id="signOut">Log out</button>
+  <h1>Welcome to Dashboard</h1>
+  <button id="logout">Logout</button>
 
-  <div>
-    <p><strong>Email:</strong> <span id="email"></span></p>
-    <p><strong>Access Token:</strong> <pre id="access-token"></pre></p>
-    <p><strong>ID Token:</strong> <pre id="id-token"></pre></p>
-    <p><strong>Refresh Token:</strong> <pre id="refresh-token"></pre></p>
-  </div>
+  <script src="https://cdn.jsdelivr.net/npm/oidc-client@1.11.5/dist/oidc-client.min.js"></script>
+  <script>
+    const clientId = "2g17vttj8eeb7fhacugmmfnkeq";
+    const logoutUri = "https://main.de43hd7rcr7qe.amplifyapp.com";
+    const cognitoDomain = "https://us-east-1e1v33d9fq.auth.us-east-1.amazoncognito.com";
 
-  <script type="module">
-    import { userManager, signOutRedirect } from "./main.js";
-
-    userManager.signinCallback().then(user => {
-      document.getElementById("email").textContent = user.profile?.email || "Unknown";
-      document.getElementById("access-token").textContent = user.access_token;
-      document.getElementById("id-token").textContent = user.id_token;
-      document.getElementById("refresh-token").textContent = user.refresh_token;
+    document.getElementById("logout").addEventListener("click", () => {
+      // Redirect user to Cognito logout
+      window.location.href = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${encodeURIComponent(logoutUri)}`;
     });
-
-    document.getElementById("signOut").addEventListener("click", signOutRedirect);
   </script>
 </body>
 </html>
