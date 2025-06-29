@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Redirecting to Login...</title>
-  <script src="https://cdn.jsdelivr.net/npm/oidc-client@1.11.5/lib/oidc-client.min.js"></script>
+  <meta charset="UTF-8">
+  <title>Redirecting to Cognito...</title>
+  <script src="https://cdn.jsdelivr.net/npm/oidc-client@1.11.5/dist/oidc-client.min.js"></script>
 </head>
 <body>
-  <h3>Checking session... Please wait</h3>
+  <p>Redirecting to sign in...</p>
 
   <script>
     const userManager = new Oidc.UserManager({
@@ -19,14 +19,14 @@
 
     userManager.getUser().then(user => {
       if (user && !user.expired) {
-        // Already signed in, go to dashboard
+        // Already logged in, redirect to dashboard
         window.location.href = "dashboard.html";
       } else {
-        // Not signed in, redirect to Cognito login
+        // Not logged in, redirect to Cognito login
         userManager.signinRedirect();
       }
-    }).catch(err => {
-      console.error("Session error:", err);
+    }).catch(error => {
+      console.error("Error:", error);
       userManager.signinRedirect();
     });
   </script>
