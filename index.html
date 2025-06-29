@@ -1,18 +1,17 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>Login</title>
+  <meta charset="UTF-8" />
+  <title>Redirecting to Login...</title>
 </head>
 <body>
-  <h2>Welcome to AI Summary App</h2>
-  <button id="signIn">Sign In</button>
+  <p>Redirecting you to the login page. Please wait...</p>
 
   <script type="module">
-    import { userManager } from "./main.js";
-    document.getElementById("signIn").addEventListener("click", () => {
-      userManager.signinRedirect();
-    });
+    import { userManager } from './main.js';
+
+    // Automatically redirect to Cognito Hosted UI on page load
+    userManager.signinRedirect();
   </script>
 </body>
 </html>
