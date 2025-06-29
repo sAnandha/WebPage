@@ -1,13 +1,17 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Loading...</title>
   <meta charset="UTF-8" />
-  <script src="https://cdn.jsdelivr.net/npm/oidc-client-ts@2.1.1/dist/browser/oidc-client.min.js"></script>
+  <title>Redirecting...</title>
 </head>
 <body>
-  <script>
-    const mgr = new oidc.UserManager({
+  <h3>Loading... Please wait</h3>
+
+  <!-- Include OIDC client as ES module -->
+  <script type="module">
+    import { UserManager } from 'https://cdn.jsdelivr.net/npm/oidc-client-ts@2.1.1/+esm';
+
+    const userManager = new UserManager({
       authority: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_E1V33d9fq",
       client_id: "2g17vttj8eeb7fhacugmmfnkeq",
       redirect_uri: "https://main.de43hd7rcr7qe.amplifyapp.com/dashboard.html",
@@ -15,15 +19,19 @@
       scope: "openid email phone"
     });
 
-    // Try to load user session
-    mgr.getUser().then(function(user) {
+    console.log("Checking Cognito session...");
+
+    userManager.getUser().then(user => {
       if (user && !user.expired) {
-        // Already signed in
+        console.log("User is signed in, redirecting to dashboard...");
         window.location.href = "dashboard.html";
       } else {
-        // Not signed in, start login
-        mgr.signinRedirect();
+        console.log("No user session, redirecting to Cognito login...");
+        userManager.signinRedirect();
       }
+    }).catch(err => {
+      console.error("Error in signin check:", err);
+      userManager.signinRedirect(); // Fallback to login
     });
   </script>
 </body>
