@@ -1,77 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
+  <title>Redirecting to Cognito</title>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Redirecting to Cognito...</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: system-ui, sans-serif;
-      background: linear-gradient(135deg, #f7f3ff 50%, #f0eaff 50%);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-
-    .container {
-      background: white;
-      padding: 2rem 3rem;
-      border-radius: 12px;
-      box-shadow: 0 0 15px rgba(0,0,0,0.1);
-      text-align: center;
-    }
-
-    h1 {
-      font-size: 1.8rem;
-      color: #111;
-    }
-
-    p {
-      font-size: 1rem;
-      color: #333;
-      margin-top: 1rem;
-    }
-
-    .spinner {
-      margin-top: 2rem;
-      border: 5px solid #eee;
-      border-top: 5px solid #006aff;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      animation: spin 1s linear infinite;
-      display: inline-block;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>Redirecting to Sign In...</h1>
-    <p>Please wait while we connect you to the secure login.</p>
-    <div class="spinner"></div>
-  </div>
-
   <script>
-    const domain = "https://us-east-1e1v33d9fq.auth.us-east-1.amazoncognito.com";
-    const clientId = "2g17vttj8eeb7fhacugmmfnkeq";
-    const redirectUri = "https://main.de43hd7rcr7qe.amplifyapp.com/dashboard.html";
-    const logoutUri = "https://main.de43hd7rcr7qe.amplifyapp.com";
-
-    const isReturning = window.location.href.includes("logoutComplete");
-
-    if (!isReturning) {
-      const logoutUrl = `${domain}/logout?client_id=${clientId}&logout_uri=${encodeURIComponent(logoutUri + "?logoutComplete=true")}`;
-      window.location.href = logoutUrl;
-    } else {
-      const loginUrl = `${domain}/login?client_id=${clientId}&response_type=code&scope=email+openid+phone&redirect_uri=${encodeURIComponent(redirectUri)}`;
-      window.location.href = loginUrl;
-    }
+    const loginUrl = "https://us-east-1e1v33d9fq.auth.us-east-1.amazoncognito.com/login"
+      + "?client_id=2g17vttj8eeb7fhacugmmfnkeq"
+      + "&response_type=code"
+      + "&scope=email+openid+phone"
+      + "&redirect_uri=https%3A%2F%2Fmain.de43hd7rcr7qe.amplifyapp.com%2Fdashboard.html";
+    window.location.href = loginUrl;
   </script>
-</body>
+</head>
+<body></body>
 </html>
