@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Redirecting to Login</title>
+  <title>Redirecting...</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -39,23 +39,30 @@
 </head>
 <body>
   <div class="message">
-    <h2>Redirecting to Login...</h2>
+    <h2>Signing you in...</h2>
     <div class="loader"></div>
   </div>
 
   <script>
-    // Replace with your own Cognito and Amplify values
     const clientId = "2g17vttj8eeb7fhacugmmfnkeq";
-    const cognitoDomain = "https://us-east-1e1v33d9fq.auth.us-east-1.amazoncognito.com";
     const redirectUri = "https://main.de43hd7rcr7qe.amplifyapp.com/dashboard.html";
-    const scope = "email+openid+phone";
-    const responseType = "code";
+    const cognitoDomain = "https://us-east-1e1v33d9fq.auth.us-east-1.amazoncognito.com";
 
-    // Construct Cognito Hosted UI URL
-    const loginUrl = `${cognitoDomain}/login?client_id=${clientId}&response_type=${responseType}&scope=${scope}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+    // 1. Logout (clears the session)
+    const logoutUrl = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${encodeURIComponent(window.location.href + "?logout=true")}`;
 
-    // Redirect to Cognito UI
-    window.location.href = loginUrl;
+    // 2. Login
+    const loginUrl = `${cognitoDomain}/login?client_id=${clientId}&response_type=code&scope=email+openid+phone&redirect_uri=${encodeURIComponent(redirectUri)}`;
+
+    const urlParams = new URLSearchParams(window.location.search);
+
+    // Step 1: Logout
+    if (!urlParams.has("logout")) {
+      window.location.href = logoutUrl;
+    } else {
+      // Step 2: Login after logout
+      window.location.href = loginUrl;
+    }
   </script>
 </body>
 </html>
