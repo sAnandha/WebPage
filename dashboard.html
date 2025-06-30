@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Document Dashboard</title>
+  <title>Upload File to S3</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -24,7 +24,7 @@
       display: block;
       margin: 10px auto;
       padding: 10px;
-      width: 100%;
+      width: 90%;
       border: none;
       border-radius: 5px;
     }
@@ -38,13 +38,15 @@
     #response {
       margin-top: 20px;
       word-break: break-word;
+      color: #fff;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Welcome, <span id="user-email">Loading...</span></h2>
-    <input type="file" id="fileInput" />
+    <h2>📁 Upload Document</h2>
+    <input type="email" id="email" placeholder="Enter your email" required />
+    <input type="file" id="fileInput" required />
     <select id="fileType">
       <option value="text">Text</option>
       <option value="image">Image</option>
@@ -55,64 +57,13 @@
   </div>
 
   <script>
-    const clientId = "2g17vttj8eeb7fhacugmmfnkeq";
-    const redirectUri = "https://main.de43hd7rcr7qe.amplifyapp.com/dashboard.html";
-    const cognitoDomain = "https://us-east-1e1v33d9fq.auth.us-east-1.amazoncognito.com";
-    const tokenEndpoint = `${cognitoDomain}/oauth2/token`;
-
-    async function exchangeCodeForToken(code) {
-      const body = new URLSearchParams({
-        grant_type: "authorization_code",
-        client_id: clientId,
-        code: code,
-        redirect_uri: redirectUri
-      });
-
-      const response = await fetch(tokenEndpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: body
-      });
-
-      const tokens = await response.json();
-
-      if (tokens.id_token) {
-        sessionStorage.setItem("id_token", tokens.id_token);
-        const decoded = JSON.parse(atob(tokens.id_token.split('.')[1]));
-        sessionStorage.setItem("user_email", decoded.email);
-        document.getElementById("user-email").textContent = decoded.email;
-      } else {
-        alert("Login failed. Redirecting...");
-        window.location.href = "index.html";
-      }
-    }
-
-    // Handle OAuth code redirect
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get("code");
-
-    if (code) {
-      exchangeCodeForToken(code);
-    } else {
-      const idToken = sessionStorage.getItem("id_token");
-      const email = sessionStorage.getItem("user_email");
-
-      if (!idToken || !email) {
-        window.location.href = "index.html";
-      } else {
-        document.getElementById("user-email").textContent = email;
-      }
-    }
-
     async function uploadFile() {
       const fileInput = document.getElementById("fileInput");
       const fileType = document.getElementById("fileType").value;
-      const userEmail = sessionStorage.getItem("user_email");
+      const userEmail = document.getElementById("email").value.trim();
 
-      if (!fileInput.files.length) {
-        alert("Please select a file.");
+      if (!fileInput.files.length || !userEmail) {
+        alert("Please fill all fields.");
         return;
       }
 
@@ -120,7 +71,7 @@
       const reader = new FileReader();
 
       reader.onload = async function () {
-        const base64 = reader.result.split(',')[1];
+        const base64 = reader.result.split(',')[1]; // remove metadata
         const payload = {
           file: base64,
           file_type: fileType,
