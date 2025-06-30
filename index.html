@@ -1,32 +1,47 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Redirecting to Cognito...</title>
   <script src="https://cdn.jsdelivr.net/npm/oidc-client@1.11.5/dist/oidc-client.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #f3f4f6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    p {
+      font-size: 1.2em;
+      color: #4b5563;
+    }
+  </style>
 </head>
 <body>
-  <p>Redirecting to sign in...</p>
+  <p>🔐 Redirecting to sign in...</p>
 
   <script>
     const userManager = new Oidc.UserManager({
-      authority: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_E1V33d9fq",
-      client_id: "2g17vttj8eeb7fhacugmmfnkeq",
-      redirect_uri: "https://main.de43hd7rcr7qe.amplifyapp.com/dashboard.html",
+      authority: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_E1V33d9fq", // Cognito user pool issuer URL
+      client_id: "2g17vttj8eeb7fhacugmmfnkeq", // App client ID
+      redirect_uri: "https://main.de43hd7rcr7qe.amplifyapp.com/dashboard.html", // After login, user goes here
       response_type: "code",
       scope: "openid email phone"
     });
 
     userManager.getUser().then(user => {
       if (user && !user.expired) {
-        // Already logged in, redirect to dashboard
+        // User is already signed in
         window.location.href = "dashboard.html";
       } else {
-        // Not logged in, redirect to Cognito login
+        // Trigger Cognito login redirect
         userManager.signinRedirect();
       }
     }).catch(error => {
-      console.error("Error:", error);
+      console.error("❌ OIDC error:", error);
       userManager.signinRedirect();
     });
   </script>
