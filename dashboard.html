@@ -1,133 +1,123 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Document Summarizer Dashboard</title>
+  <meta charset="UTF-8">
+  <title>Summarizer Dashboard</title>
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
-      color: white;
-      text-align: center;
-      padding: 40px;
+      font-family: sans-serif;
+      background: #eef1f8;
+      padding: 20px;
     }
-
-    h1 {
-      font-size: 2.5rem;
-      margin-bottom: 10px;
-    }
-
-    form {
-      margin-top: 30px;
-      background: rgba(255, 255, 255, 0.1);
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: #fff;
       padding: 30px;
-      border-radius: 15px;
-      display: inline-block;
-      text-align: left;
+      border-radius: 10px;
     }
-
-    label, input, select, textarea, button {
-      display: block;
+    textarea,
+    input[type="file"] {
       width: 100%;
       margin-top: 10px;
-      font-size: 1rem;
     }
-
     button {
-      background-color: #ffffff;
-      color: #2575fc;
+      padding: 10px 20px;
+      margin-top: 20px;
+      background: #4f46e5;
+      color: white;
       border: none;
-      padding: 10px;
-      font-weight: bold;
-      border-radius: 8px;
+      border-radius: 5px;
       cursor: pointer;
     }
-
-    #summaryOutput {
-      margin-top: 30px;
-      background: rgba(255, 255, 255, 0.2);
-      padding: 20px;
-      border-radius: 10px;
+    #welcome {
+      font-weight: bold;
+      margin-bottom: 20px;
     }
   </style>
 </head>
 <body>
+  <div class="container">
+    <div id="welcome">Welcome, <span id="email">loading...</span></div>
 
-  <h1>Welcome to Smart Summarizer</h1>
-  <p id="userEmail">Loading user email...</p>
-
-  <form id="uploadForm">
-    <label for="file_type">Select File Type:</label>
-    <select id="file_type" required>
-      <option value="text">Text</option>
-      <option value="image">Image (PNG, JPG)</option>
-      <option value="pdf">PDF</option>
-    </select>
-
-    <label for="fileInput">Upload File:</label>
-    <input type="file" id="fileInput" accept=".txt,.png,.jpg,.jpeg,.pdf" required />
-
-    <button type="submit">Submit for Summary</button>
-  </form>
-
-  <div id="summaryOutput"></div>
+    <div>
+      <textarea id="textBox" rows="5" placeholder="Enter your text here..."></textarea>
+      <input type="file" id="fileInput" accept=".pdf,image/*" />
+      <button id="uploadBtn">Submit for Summary</button>
+    </div>
+  </div>
 
   <script type="module">
-    import { UserManager } from 'https://cdn.jsdelivr.net/npm/oidc-client-ts/+esm';
+    import { userManager, signOutRedirect } from './main.js';
 
-    const userManager = new UserManager({
-      authority: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_E1V33d9fq",
-      client_id: "2g17vttj8eeb7fhacugmmfnkeq",
-      redirect_uri: window.location.origin + "/dashboard.html",
-      response_type: "code",
-      scope: "email openid"
-    });
+    let userEmail = "";
 
-    let user = await userManager.getUser();
-    if (!user || user.expired) {
-      await userManager.signinRedirect();
-    } else {
-      document.getElementById("userEmail").textContent = "Logged in as: " + user.profile.email;
-    }
+    userManager.signinRedirectCallback().then(async user => {
+      userEmail = user.profile.email;
+      document.getElementById('email').textContent = userEmail;
 
-    const apiUrl = "https://y0gphnx7ud.execute-api.us-east-1.amazonaws.com/sample/summarize";
+      document.getElementById('uploadBtn').addEventListener('click', async () => {
+        const text = document.getElementById('textBox').value;
+        const file = document.getElementById('fileInput').files[0];
+        let fileContent = "";
 
-    document.getElementById("uploadForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
+        if (file) {
+          const reader = new FileReader();
+          reader.onloadend = async () => {
+            fileContent = reader.result.split(',')[1];
 
-      const file = document.getElementById("fileInput").files[0];
-      const fileType = document.getElementById("file_type").value;
+            const mimeType = file.type;
+            const type = mimeType.includes("image") ? "image" :
+                         mimeType.includes("pdf") ? "pdf" : "unknown";
 
-      if (!file || !fileType) return alert("Please upload a valid file and choose type.");
+            if (type === "unknown") {
+              alert("❌ Unsupported file type.");
+              return;
+            }
 
-      const reader = new FileReader();
-      reader.onloadend = async function () {
-        const base64File = reader.result.split(",")[1];
+            await uploadToAPI(fileContent, type);
+          };
+          reader.readAsDataURL(file);
+        } else if (text.trim()) {
+          fileContent = btoa(text);
+          await uploadToAPI(fileContent, "text");
+        } else {
+          alert("⚠ Please enter text or upload a file.");
+        }
+      });
 
+      async function uploadToAPI(fileContent, type) {
         const payload = {
-          file: base64File,
-          file_type: fileType,
-          user_id: user.profile.email
+          file: fileContent,
+          file_type: type,
+          user_id: userEmail,
+          file_name: generateFileName(type)
         };
 
-        const response = await fetch(apiUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
+        try {
+          const response = await fetch("https://y0gphnx7ud.execute-api.us-east-1.amazonaws.com/sample/summarize", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+          });
 
-        const data = await response.json();
-        if (response.status === 202) {
-          document.getElementById("summaryOutput").innerHTML =
-            `<p><strong>Upload successful!</strong></p>
-             <p>Summary ID: <code>${data.summary_id}</code></p>
-             <p>Please wait a moment while your summary is processed...</p>`;
-        } else {
-          document.getElementById("summaryOutput").textContent = "Error: " + (data.error || "Unknown error");
+          const result = await response.json();
+          alert("✅ Summary request sent! ID: " + result.summary_id);
+        } catch (error) {
+          alert("❌ Upload failed: " + error.message);
         }
-      };
+      }
 
-      reader.readAsDataURL(file);
+      function generateFileName(type) {
+        const timestamp = new Date().toISOString().replace(/[-:.]/g, "");
+        return upload_${userEmail}_${timestamp}.${type === "image" ? "png" : type === "text" ? "txt" : "pdf"};
+      }
+
+    }).catch(e => {
+      // If user not logged in, redirect to Cognito login
+      userManager.signinRedirect();
     });
   </script>
 </body>
