@@ -10,14 +10,14 @@
       padding: 20px;
     }
     .container {
-      max-width: 600px;
+      max-width: 700px;
       margin: auto;
       background: #fff;
       padding: 30px;
       border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     }
-    textarea,
-    input[type="file"] {
+    textarea, input[type="file"] {
       width: 100%;
       margin-top: 10px;
     }
@@ -34,6 +34,33 @@
       font-weight: bold;
       margin-bottom: 20px;
     }
+    #viewer {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #ccc;
+    }
+    iframe, img {
+      width: 100%;
+      max-height: 500px;
+      margin-top: 15px;
+      border: 1px solid #ddd;
+    }
+    pre {
+      white-space: pre-wrap;
+      background: #f9fafb;
+      padding: 10px;
+      border-radius: 5px;
+      margin-top: 15px;
+    }
+    .download-link {
+      margin-top: 15px;
+      display: inline-block;
+      background: #10b981;
+      color: white;
+      padding: 10px 15px;
+      border-radius: 5px;
+      text-decoration: none;
+    }
   </style>
 </head>
 <body>
@@ -44,6 +71,13 @@
       <textarea id="textBox" rows="5" placeholder="Enter your text here..."></textarea>
       <input type="file" id="fileInput" accept=".pdf,image/*" />
       <button id="uploadBtn">Submit for Summary</button>
+    </div>
+
+    <!-- 📦 File Viewer -->
+    <div id="viewer" style="display:none;">
+      <h3>📄 Summary Output</h3>
+      <div id="outputArea"></div>
+      <a id="downloadLink" class="download-link" href="#" download>⬇ Download File</a>
     </div>
   </div>
 
@@ -59,14 +93,12 @@
       document.getElementById('uploadBtn').addEventListener('click', async () => {
         const text = document.getElementById('textBox').value;
         const file = document.getElementById('fileInput').files[0];
-        let fileContent = "";
 
         if (file) {
-          const reader = new FileReader();
-          reader.onloadend = async () => {
-            fileContent = reader.result.split(',')[1];
-
+          try {
+            const base64Data = await readFileAsBase64(file);
             const mimeType = file.type;
+
             const type = mimeType.includes("image") ? "image" :
                          mimeType.includes("pdf") ? "pdf" : "unknown";
 
@@ -75,12 +107,14 @@
               return;
             }
 
-            await uploadToAPI(fileContent, type);
-          };
-          reader.readAsDataURL(file);
+            await uploadToAPI(base64Data, type);
+          } catch (error) {
+            alert("❌ File reading failed.");
+          }
+
         } else if (text.trim()) {
-          fileContent = btoa(text);
-          await uploadToAPI(fileContent, "text");
+          const base64Data = btoa(text);
+          await uploadToAPI(base64Data, "text");
         } else {
           alert("⚠ Please enter text or upload a file.");
         }
@@ -91,20 +125,27 @@
           file: fileContent,
           file_type: type,
           user_id: userEmail,
-          file_name: generateFileName(type)
+          file_name: generateFileName(type),
+          bucket: "amrize-user-content"
         };
 
         try {
           const response = await fetch("https://y0gphnx7ud.execute-api.us-east-1.amazonaws.com/sample/summarize", {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
           });
 
           const result = await response.json();
-          alert("✅ Summary request sent! ID: " + result.summary_id);
+          alert("✅ Summary request sent!");
+
+          // 🖼 Display the result (if URL is returned)
+          if (result.summary_url) {
+            showSummary(result.summary_url, type);
+          } else {
+            alert("Summary submitted, but no viewable link provided.");
+          }
+
         } catch (error) {
           alert("❌ Upload failed: " + error.message);
         }
@@ -115,8 +156,49 @@
         return upload_${userEmail}_${timestamp}.${type === "image" ? "png" : type === "text" ? "txt" : "pdf"};
       }
 
+      function readFileAsBase64(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = reader.result.split(',')[1];
+            resolve(result);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+
+      function showSummary(url, type) {
+        const viewer = document.getElementById('viewer');
+        const output = document.getElementById('outputArea');
+        const downloadLink = document.getElementById('downloadLink');
+
+        viewer.style.display = "block";
+        output.innerHTML = "";
+
+        if (type === "image") {
+          const img = document.createElement("img");
+          img.src = url;
+          output.appendChild(img);
+        } else if (type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = url;
+          iframe.height = "500";
+          output.appendChild(iframe);
+        } else if (type === "text") {
+          fetch(url)
+            .then(res => res.text())
+            .then(text => {
+              const pre = document.createElement("pre");
+              pre.textContent = text;
+              output.appendChild(pre);
+            });
+        }
+
+        downloadLink.href = url;
+      }
+
     }).catch(e => {
-      // If user not logged in, redirect to Cognito login
       userManager.signinRedirect();
     });
   </script>
