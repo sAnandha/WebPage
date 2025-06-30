@@ -1,110 +1,119 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8">
-  <title>Document Summarizer Dashboard</title>
+  <title>Authenticated Uploader</title>
+  <script src="https://cdn.jsdelivr.net/npm/oidc-client-ts/dist/oidc-client-ts.min.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(to right, #6a11cb, #2575fc);
-      color: white;
+      background: linear-gradient(to right, #667eea, #764ba2);
+      color: #fff;
       text-align: center;
-      padding: 50px;
+      padding: 40px;
     }
-
-    .upload-box {
-      background: white;
-      color: black;
+    .container {
+      background: rgba(0,0,0,0.3);
+      border-radius: 15px;
       padding: 30px;
-      border-radius: 10px;
-      width: 90%;
       max-width: 500px;
       margin: auto;
-      box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
     }
-
     input, select, button {
-      width: 100%;
       padding: 12px;
-      margin: 10px 0;
+      margin: 10px;
+      width: 90%;
+      border-radius: 8px;
       border: none;
-      border-radius: 5px;
-      font-size: 16px;
     }
-
     button {
-      background-color: #2575fc;
+      background-color: #38b2ac;
       color: white;
+      font-weight: bold;
       cursor: pointer;
-    }
-
-    button:hover {
-      background-color: #1a5edc;
-    }
-
-    .message {
-      margin-top: 20px;
     }
   </style>
 </head>
 <body>
-  <h1>Welcome to Document Summarizer</h1>
-  <div class="upload-box">
-    <form id="uploadForm">
-      <input type="email" id="user_id" placeholder="Enter your email" required />
-      <select id="file_type" required>
-        <option value="">Select File Type</option>
-        <option value="text">Text</option>
-        <option value="image">Image</option>
-        <option value="pdf">PDF</option>
-      </select>
-      <input type="file" id="fileInput" required />
-      <button type="submit">Upload File</button>
-    </form>
 
-    <div class="message" id="message"></div>
-  </div>
+<div class="container">
+  <h2>Upload a File for Summary</h2>
+  
+  <div id="welcome"></div>
 
-  <script>
-    const form = document.getElementById("uploadForm");
-    const messageDiv = document.getElementById("message");
+  <select id="fileType">
+    <option value="image">Image</option>
+    <option value="pdf">PDF</option>
+  </select><br>
+  <input type="file" id="fileInput" accept=".png,.jpg,.jpeg,.pdf"><br>
+  <button onclick="upload()">Submit</button>
+  <p id="message"></p>
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
+  <button onclick="logout()">Log out</button>
+</div>
 
-      const user_id = document.getElementById("user_id").value;
-      const file_type = document.getElementById("file_type").value;
-      const fileInput = document.getElementById("fileInput");
-      const file = fileInput.files[0];
+<script>
+  const userManager = new oidc.UserManager({
+    authority: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_E1V33d9fq",
+    client_id: "2g17vttj8eeb7fhacugmmfnkeq",
+    redirect_uri: "https://main.de43hd7rcr7qe.amplifyapp.com",
+    response_type: "code",
+    scope: "openid email"
+  });
 
-      if (!user_id || !file_type || !file) {
-        messageDiv.innerText = "Please fill in all fields and select a file.";
-        return;
-      }
+  userManager.getUser().then(user => {
+    if (!user || user.expired) {
+      userManager.signinRedirect();
+    } else {
+      window.userEmail = user.profile.email;
+      document.getElementById("welcome").textContent = "Hello, " + window.userEmail;
+    }
+  });
 
-      const formData = new FormData();
-      formData.append("user_id", user_id);
-      formData.append("file_type", file_type);
-      formData.append("file", file);
+  async function upload() {
+    const file = document.getElementById('fileInput').files[0];
+    const fileType = document.getElementById('fileType').value;
+
+    if (!file) {
+      alert("Please select a file.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async function () {
+      const base64File = reader.result.split(',')[1];
+
+      const payload = {
+        user_id: window.userEmail,
+        file_type: fileType,
+        file: base64File
+      };
 
       try {
-        const response = await fetch("https://y0gphnx7ud.execute-api.us-east-1.amazonaws.com/sample/summarize", {
+        const res = await fetch("https://y0gphnx7ud.execute-api.us-east-1.amazonaws.com/sample/summarize", {
           method: "POST",
-          body: formData
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
         });
 
-        const result = await response.json();
-
-        if (response.ok) {
-          messageDiv.innerText = `✅ Upload successful! File stored as: ${result.key}`;
-        } else {
-          messageDiv.innerText = `❌ Error: ${result.error || "Unknown error"}`;
-        }
-      } catch (error) {
-        console.error("Upload error:", error);
-        messageDiv.innerText = `❌ Error: ${error.message}`;
+        const result = await res.json();
+        document.getElementById('message').textContent = "✅ " + result.message + " | Summary ID: " + result.summary_id;
+      } catch (err) {
+        console.error(err);
+        document.getElementById('message').textContent = "❌ Upload failed.";
       }
-    });
-  </script>
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function logout() {
+    const logoutUri = encodeURIComponent("https://main.de43hd7rcr7qe.amplifyapp.com");
+    const cognitoDomain = "https://us-east-1e1v33d9fq.auth.us-east-1.amazoncognito.com";
+    const clientId = "2g17vttj8eeb7fhacugmmfnkeq";
+    window.location.href = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${logoutUri}`;
+  }
+</script>
 </body>
 </html>
