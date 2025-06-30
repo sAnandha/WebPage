@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <title>Redirecting to Cognito...</title>
-  <script src="https://cdn.jsdelivr.net/npm/oidc-client@1.11.5/dist/oidc-client.min.js"></script>
   <style>
     body {
       font-family: sans-serif;
-      background-color: #f3f4f6;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -16,34 +16,21 @@
     }
     p {
       font-size: 1.2em;
-      color: #4b5563;
     }
   </style>
 </head>
 <body>
-  <p>🔐 Redirecting to sign in...</p>
+  <p>🔐 Redirecting to login...</p>
 
   <script>
-    const userManager = new Oidc.UserManager({
-      authority: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_E1V33d9fq", // Cognito user pool issuer URL
-      client_id: "2g17vttj8eeb7fhacugmmfnkeq", // App client ID
-      redirect_uri: "https://main.de43hd7rcr7qe.amplifyapp.com/dashboard.html", // After login, user goes here
-      response_type: "code",
-      scope: "openid email phone"
-    });
+    // Replace with your actual Cognito domain
+    const domain = "https://us-east-1e1v33d9fq.auth.us-east-1.amazoncognito.com";
+    const clientId = "2g17vttj8eeb7fhacugmmfnkeq";
+    const redirectUri = "https://main.de43hd7rcr7qe.amplifyapp.com/dashboard.html";
+    const loginUrl = `${domain}/login?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid+email+phone`;
 
-    userManager.getUser().then(user => {
-      if (user && !user.expired) {
-        // User is already signed in
-        window.location.href = "dashboard.html";
-      } else {
-        // Trigger Cognito login redirect
-        userManager.signinRedirect();
-      }
-    }).catch(error => {
-      console.error("❌ OIDC error:", error);
-      userManager.signinRedirect();
-    });
+    // Redirect immediately
+    window.location.href = loginUrl;
   </script>
 </body>
 </html>
