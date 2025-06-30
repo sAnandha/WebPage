@@ -2,26 +2,27 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Document Summarizer Dashboard</title>
+  <title>Document Dashboard</title>
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
+      font-family: Arial, sans-serif;
       background: linear-gradient(to right, #667eea, #764ba2);
       color: white;
+      padding: 40px;
       text-align: center;
-      padding: 50px;
     }
 
     .container {
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 10px;
+      background-color: rgba(255, 255, 255, 0.1);
       padding: 30px;
+      border-radius: 10px;
       max-width: 500px;
       margin: auto;
     }
 
     input, select, button {
-      margin: 10px 0;
+      display: block;
+      margin: 10px auto;
       padding: 10px;
       width: 100%;
       border: none;
@@ -34,10 +35,6 @@
       cursor: pointer;
     }
 
-    button:hover {
-      background-color: #4338ca;
-    }
-
     #response {
       margin-top: 20px;
       word-break: break-word;
@@ -46,7 +43,7 @@
 </head>
 <body>
   <div class="container">
-    <h2>Welcome, <span id="user-email">User</span></h2>
+    <h2>Welcome, <span id="user-email">Loading...</span></h2>
     <input type="file" id="fileInput" />
     <select id="fileType">
       <option value="text">Text</option>
@@ -58,23 +55,61 @@
   </div>
 
   <script>
-    // Get email from URL query after Cognito redirect
-    const urlParams = new URLSearchParams(window.location.search);
-    const idToken = urlParams.get("id_token") || sessionStorage.getItem("id_token");
+    const clientId = "2g17vttj8eeb7fhacugmmfnkeq";
+    const redirectUri = "https://main.de43hd7rcr7qe.amplifyapp.com/dashboard.html";
+    const cognitoDomain = "https://us-east-1e1v33d9fq.auth.us-east-1.amazoncognito.com";
+    const tokenEndpoint = `${cognitoDomain}/oauth2/token`;
 
-    if (!idToken) {
-      // Redirect if not authenticated
-      window.location.href = "index.html";
+    async function exchangeCodeForToken(code) {
+      const body = new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: clientId,
+        code: code,
+        redirect_uri: redirectUri
+      });
+
+      const response = await fetch(tokenEndpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: body
+      });
+
+      const tokens = await response.json();
+
+      if (tokens.id_token) {
+        sessionStorage.setItem("id_token", tokens.id_token);
+        const decoded = JSON.parse(atob(tokens.id_token.split('.')[1]));
+        sessionStorage.setItem("user_email", decoded.email);
+        document.getElementById("user-email").textContent = decoded.email;
+      } else {
+        alert("Login failed. Redirecting...");
+        window.location.href = "index.html";
+      }
+    }
+
+    // Handle OAuth code redirect
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get("code");
+
+    if (code) {
+      exchangeCodeForToken(code);
     } else {
-      sessionStorage.setItem("id_token", idToken);
-      const payload = JSON.parse(atob(idToken.split('.')[1]));
-      document.getElementById("user-email").textContent = payload.email;
+      const idToken = sessionStorage.getItem("id_token");
+      const email = sessionStorage.getItem("user_email");
+
+      if (!idToken || !email) {
+        window.location.href = "index.html";
+      } else {
+        document.getElementById("user-email").textContent = email;
+      }
     }
 
     async function uploadFile() {
       const fileInput = document.getElementById("fileInput");
       const fileType = document.getElementById("fileType").value;
-      const userEmail = document.getElementById("user-email").textContent;
+      const userEmail = sessionStorage.getItem("user_email");
 
       if (!fileInput.files.length) {
         alert("Please select a file.");
@@ -85,16 +120,12 @@
       const reader = new FileReader();
 
       reader.onload = async function () {
-        const base64File = reader.result.split(',')[1]; // Remove data URL prefix
-
+        const base64 = reader.result.split(',')[1];
         const payload = {
-          file: base64File,
+          file: base64,
           file_type: fileType,
           user_id: userEmail
         };
-
-        const responseDiv = document.getElementById("response");
-        responseDiv.innerText = "Uploading and summarizing...";
 
         try {
           const res = await fetch("https://y0gphnx7ud.execute-api.us-east-1.amazonaws.com/sample/summarize", {
@@ -106,13 +137,11 @@
           });
 
           const data = await res.json();
-          if (res.ok) {
-            responseDiv.innerText = "✅ Upload successful! Summary ID: " + data.summary_id;
-          } else {
-            responseDiv.innerText = "❌ Error: " + JSON.stringify(data);
-          }
+          document.getElementById("response").innerText = res.ok ?
+            `✅ Uploaded. Summary ID: ${data.summary_id}` :
+            `❌ Error: ${JSON.stringify(data)}`;
         } catch (err) {
-          responseDiv.innerText = "❌ Failed to upload: " + err;
+          document.getElementById("response").innerText = "❌ Upload error: " + err;
         }
       };
 
