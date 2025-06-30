@@ -2,122 +2,121 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Dashboard - Upload</title>
+  <title>Document Summarizer Dashboard</title>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #6e8efb, #a777e3);
+      background: linear-gradient(to right, #667eea, #764ba2);
       color: white;
       text-align: center;
       padding: 50px;
     }
 
     .container {
-      background-color: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
       padding: 30px;
-      border-radius: 12px;
-      display: inline-block;
       max-width: 500px;
+      margin: auto;
     }
 
     input, select, button {
-      margin: 10px;
+      margin: 10px 0;
       padding: 10px;
-      border-radius: 6px;
-      border: none;
       width: 100%;
-      font-size: 1rem;
+      border: none;
+      border-radius: 5px;
     }
 
     button {
-      background-color: #ffffff;
-      color: #333;
+      background-color: #4f46e5;
+      color: white;
       cursor: pointer;
-      font-weight: bold;
     }
 
-    #status {
+    button:hover {
+      background-color: #4338ca;
+    }
+
+    #response {
       margin-top: 20px;
+      word-break: break-word;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Upload Text, Image or PDF</h2>
+    <h2>Welcome, <span id="user-email">User</span></h2>
     <input type="file" id="fileInput" />
     <select id="fileType">
       <option value="text">Text</option>
       <option value="image">Image</option>
       <option value="pdf">PDF</option>
     </select>
-    <button onclick="uploadFile()">Upload</button>
-    <div id="status"></div>
+    <button onclick="uploadFile()">Upload & Summarize</button>
+    <div id="response"></div>
   </div>
 
-  <script type="module">
-    import { UserManager } from 'https://cdn.jsdelivr.net/npm/oidc-client-ts/+esm';
+  <script>
+    // Get email from URL query after Cognito redirect
+    const urlParams = new URLSearchParams(window.location.search);
+    const idToken = urlParams.get("id_token") || sessionStorage.getItem("id_token");
 
-    const userManager = new UserManager({
-      authority: "https://us-east-1e1v33d9fq.auth.us-east-1.amazoncognito.com",
-      client_id: "2g17vttj8eeb7fhacugmmfnkeq",
-      redirect_uri: "https://main.de43hd7rcr7qe.amplifyapp.com/dashboard.html",
-      response_type: "code",
-      scope: "openid email profile"
-    });
-
-    let user;
-
-    userManager.getUser().then(u => {
-      if (!u || u.expired) {
-        userManager.signinRedirect();
-      } else {
-        user = u;
-      }
-    });
+    if (!idToken) {
+      // Redirect if not authenticated
+      window.location.href = "index.html";
+    } else {
+      sessionStorage.setItem("id_token", idToken);
+      const payload = JSON.parse(atob(idToken.split('.')[1]));
+      document.getElementById("user-email").textContent = payload.email;
+    }
 
     async function uploadFile() {
       const fileInput = document.getElementById("fileInput");
       const fileType = document.getElementById("fileType").value;
-      const statusDiv = document.getElementById("status");
+      const userEmail = document.getElementById("user-email").textContent;
 
       if (!fileInput.files.length) {
-        statusDiv.innerText = "Please select a file.";
+        alert("Please select a file.");
         return;
       }
 
       const file = fileInput.files[0];
-      const base64File = await toBase64(file);
+      const reader = new FileReader();
 
-      const payload = {
-        file: base64File.split(",")[1],  // remove the base64 header
-        file_type: fileType,
-        user_id: user.profile.email  // Cognito email
+      reader.onload = async function () {
+        const base64File = reader.result.split(',')[1]; // Remove data URL prefix
+
+        const payload = {
+          file: base64File,
+          file_type: fileType,
+          user_id: userEmail
+        };
+
+        const responseDiv = document.getElementById("response");
+        responseDiv.innerText = "Uploading and summarizing...";
+
+        try {
+          const res = await fetch("https://y0gphnx7ud.execute-api.us-east-1.amazonaws.com/sample/summarize", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+          });
+
+          const data = await res.json();
+          if (res.ok) {
+            responseDiv.innerText = "✅ Upload successful! Summary ID: " + data.summary_id;
+          } else {
+            responseDiv.innerText = "❌ Error: " + JSON.stringify(data);
+          }
+        } catch (err) {
+          responseDiv.innerText = "❌ Failed to upload: " + err;
+        }
       };
 
-      try {
-        const res = await fetch("https://y0gphnx7ud.execute-api.us-east-1.amazonaws.com/sample/summarize", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(payload)
-        });
-
-        const result = await res.json();
-        statusDiv.innerText = res.ok ? "✅ Uploaded successfully. Summary ID: " + result.summary_id : "❌ " + (result.error || result.message);
-      } catch (err) {
-        statusDiv.innerText = "❌ Upload failed: " + err.message;
-      }
-    }
-
-    function toBase64(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
-      });
+      reader.readAsDataURL(file);
     }
   </script>
 </body>
