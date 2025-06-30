@@ -1,92 +1,98 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Authenticated Uploader</title>
-  <script src="https://cdn.jsdelivr.net/npm/oidc-client-ts/dist/oidc-client-ts.min.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard - Upload</title>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(to right, #667eea, #764ba2);
-      color: #fff;
-      text-align: center;
-      padding: 40px;
-    }
-    .container {
-      background: rgba(0,0,0,0.3);
-      border-radius: 15px;
-      padding: 30px;
-      max-width: 500px;
-      margin: auto;
-    }
-    input, select, button {
-      padding: 12px;
-      margin: 10px;
-      width: 90%;
-      border-radius: 8px;
-      border: none;
-    }
-    button {
-      background-color: #38b2ac;
+      background: linear-gradient(135deg, #6e8efb, #a777e3);
       color: white;
-      font-weight: bold;
+      text-align: center;
+      padding: 50px;
+    }
+
+    .container {
+      background-color: rgba(255, 255, 255, 0.1);
+      padding: 30px;
+      border-radius: 12px;
+      display: inline-block;
+      max-width: 500px;
+    }
+
+    input, select, button {
+      margin: 10px;
+      padding: 10px;
+      border-radius: 6px;
+      border: none;
+      width: 100%;
+      font-size: 1rem;
+    }
+
+    button {
+      background-color: #ffffff;
+      color: #333;
       cursor: pointer;
+      font-weight: bold;
+    }
+
+    #status {
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
+  <div class="container">
+    <h2>Upload Text, Image or PDF</h2>
+    <input type="file" id="fileInput" />
+    <select id="fileType">
+      <option value="text">Text</option>
+      <option value="image">Image</option>
+      <option value="pdf">PDF</option>
+    </select>
+    <button onclick="uploadFile()">Upload</button>
+    <div id="status"></div>
+  </div>
 
-<div class="container">
-  <h2>Upload a File for Summary</h2>
-  
-  <div id="welcome"></div>
+  <script type="module">
+    import { UserManager } from 'https://cdn.jsdelivr.net/npm/oidc-client-ts/+esm';
 
-  <select id="fileType">
-    <option value="image">Image</option>
-    <option value="pdf">PDF</option>
-  </select><br>
-  <input type="file" id="fileInput" accept=".png,.jpg,.jpeg,.pdf"><br>
-  <button onclick="upload()">Submit</button>
-  <p id="message"></p>
+    const userManager = new UserManager({
+      authority: "https://us-east-1e1v33d9fq.auth.us-east-1.amazoncognito.com",
+      client_id: "2g17vttj8eeb7fhacugmmfnkeq",
+      redirect_uri: "https://main.de43hd7rcr7qe.amplifyapp.com/dashboard.html",
+      response_type: "code",
+      scope: "openid email profile"
+    });
 
-  <button onclick="logout()">Log out</button>
-</div>
+    let user;
 
-<script>
-  const userManager = new oidc.UserManager({
-    authority: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_E1V33d9fq",
-    client_id: "2g17vttj8eeb7fhacugmmfnkeq",
-    redirect_uri: "https://main.de43hd7rcr7qe.amplifyapp.com",
-    response_type: "code",
-    scope: "openid email"
-  });
+    userManager.getUser().then(u => {
+      if (!u || u.expired) {
+        userManager.signinRedirect();
+      } else {
+        user = u;
+      }
+    });
 
-  userManager.getUser().then(user => {
-    if (!user || user.expired) {
-      userManager.signinRedirect();
-    } else {
-      window.userEmail = user.profile.email;
-      document.getElementById("welcome").textContent = "Hello, " + window.userEmail;
-    }
-  });
+    async function uploadFile() {
+      const fileInput = document.getElementById("fileInput");
+      const fileType = document.getElementById("fileType").value;
+      const statusDiv = document.getElementById("status");
 
-  async function upload() {
-    const file = document.getElementById('fileInput').files[0];
-    const fileType = document.getElementById('fileType').value;
+      if (!fileInput.files.length) {
+        statusDiv.innerText = "Please select a file.";
+        return;
+      }
 
-    if (!file) {
-      alert("Please select a file.");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = async function () {
-      const base64File = reader.result.split(',')[1];
+      const file = fileInput.files[0];
+      const base64File = await toBase64(file);
 
       const payload = {
-        user_id: window.userEmail,
+        file: base64File.split(",")[1],  // remove the base64 header
         file_type: fileType,
-        file: base64File
+        user_id: user.profile.email  // Cognito email
       };
 
       try {
@@ -99,21 +105,20 @@
         });
 
         const result = await res.json();
-        document.getElementById('message').textContent = "✅ " + result.message + " | Summary ID: " + result.summary_id;
+        statusDiv.innerText = res.ok ? "✅ Uploaded successfully. Summary ID: " + result.summary_id : "❌ " + (result.error || result.message);
       } catch (err) {
-        console.error(err);
-        document.getElementById('message').textContent = "❌ Upload failed.";
+        statusDiv.innerText = "❌ Upload failed: " + err.message;
       }
-    };
-    reader.readAsDataURL(file);
-  }
+    }
 
-  function logout() {
-    const logoutUri = encodeURIComponent("https://main.de43hd7rcr7qe.amplifyapp.com");
-    const cognitoDomain = "https://us-east-1e1v33d9fq.auth.us-east-1.amazoncognito.com";
-    const clientId = "2g17vttj8eeb7fhacugmmfnkeq";
-    window.location.href = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${logoutUri}`;
-  }
-</script>
+    function toBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+      });
+    }
+  </script>
 </body>
 </html>
