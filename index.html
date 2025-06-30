@@ -2,35 +2,122 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Redirecting to Cognito...</title>
+  <title>Document Summarizer Dashboard</title>
   <style>
     body {
-      font-family: sans-serif;
-      background: linear-gradient(135deg, #667eea, #764ba2);
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #667eea, #764ba2);
       color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
+      text-align: center;
+      padding: 50px;
     }
-    p {
-      font-size: 1.2em;
+
+    .container {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 30px;
+      max-width: 500px;
+      margin: auto;
+    }
+
+    input, select, button {
+      margin: 10px 0;
+      padding: 10px;
+      width: 100%;
+      border: none;
+      border-radius: 5px;
+    }
+
+    button {
+      background-color: #4f46e5;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #4338ca;
+    }
+
+    #response {
+      margin-top: 20px;
+      word-break: break-word;
     }
   </style>
 </head>
 <body>
-  <p>🔐 Redirecting to login...</p>
+  <div class="container">
+    <h2>Welcome, <span id="user-email">User</span></h2>
+    <input type="file" id="fileInput" />
+    <select id="fileType">
+      <option value="text">Text</option>
+      <option value="image">Image</option>
+      <option value="pdf">PDF</option>
+    </select>
+    <button onclick="uploadFile()">Upload & Summarize</button>
+    <div id="response"></div>
+  </div>
 
   <script>
-    // Replace with your actual Cognito domain
-    const domain = "https://us-east-1e1v33d9fq.auth.us-east-1.amazoncognito.com";
-    const clientId = "2g17vttj8eeb7fhacugmmfnkeq";
-    const redirectUri = "https://main.de43hd7rcr7qe.amplifyapp.com/dashboard.html";
-    const loginUrl = `${domain}/login?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid+email+phone`;
+    // Get email from URL query after Cognito redirect
+    const urlParams = new URLSearchParams(window.location.search);
+    const idToken = urlParams.get("id_token") || sessionStorage.getItem("id_token");
 
-    // Redirect immediately
-    window.location.href = loginUrl;
+    if (!idToken) {
+      // Redirect if not authenticated
+      window.location.href = "index.html";
+    } else {
+      sessionStorage.setItem("id_token", idToken);
+      const payload = JSON.parse(atob(idToken.split('.')[1]));
+      document.getElementById("user-email").textContent = payload.email;
+    }
+
+    async function uploadFile() {
+      const fileInput = document.getElementById("fileInput");
+      const fileType = document.getElementById("fileType").value;
+      const userEmail = document.getElementById("user-email").textContent;
+
+      if (!fileInput.files.length) {
+        alert("Please select a file.");
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+
+      reader.onload = async function () {
+        const base64File = reader.result.split(',')[1]; // Remove data URL prefix
+
+        const payload = {
+          file: base64File,
+          file_type: fileType,
+          user_id: userEmail
+        };
+
+        const responseDiv = document.getElementById("response");
+        responseDiv.innerText = "Uploading and summarizing...";
+
+        try {
+          const res = await fetch("https://y0gphnx7ud.execute-api.us-east-1.amazonaws.com/sample/summarize", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+          });
+
+          const data = await res.json();
+          if (res.ok) {
+            responseDiv.innerText = "✅ Upload successful! Summary ID: " + data.summary_id;
+          } else {
+            responseDiv.innerText = "❌ Error: " + JSON.stringify(data);
+          }
+        } catch (err) {
+          responseDiv.innerText = "❌ Failed to upload: " + err;
+        }
+      };
+
+      reader.readAsDataURL(file);
+    }
   </script>
 </body>
 </html>
