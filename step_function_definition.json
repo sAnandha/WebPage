@@ -1,0 +1,46 @@
+{
+  "Comment": "Document Summarizer Workflow",
+  "StartAt": "CheckType",
+  "States": {
+    "CheckType": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.file_type",
+          "StringEquals": "image",
+          "Next": "TextractProcessor"
+        },
+        {
+          "Variable": "$.file_type",
+          "StringEquals": "pdf",
+          "Next": "TextractProcessor"
+        }
+      ],
+      "Default": "SummarizeDocument"
+    },
+    "TextractProcessor": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:us-east-1:026090554634:function:TextractProcessor:$LATEST",
+      "Next": "SummarizeDocument"
+    },
+    "SummarizeDocument": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:us-east-1:026090554634:function:SummarizeDocument:$LATEST",
+      "Next": "ParseClaudeOutput"
+    },
+    "ParseClaudeOutput": {
+      "Type": "Pass",
+      "Parameters": {
+        "parsed.$": "States.StringToJson($.body)"
+      },
+      "ResultPath": "$.parsed",
+      "Next": "StoreSummary"
+    },
+    "StoreSummary": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:us-east-1:026090554634:function:StoreSummary:$LATEST",
+      "InputPath": "$.parsed",
+      "End": true
+    }
+  }
+}
