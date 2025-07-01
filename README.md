@@ -2,6 +2,9 @@
 
 This project delivers an end-to-end **serverless application** designed to process, extract, and summarize documents uploaded by users. Built entirely with **AWS managed services**, the system takes in various file formats (PDF, Image, Text), intelligently extracts content, generates summaries using **Bedrock Claude**, and returns the result—all without any server management.
 
+![Logo](ArchitectureDiagram.jpg)
+
+
 > 🧠 A powerful blend of **Lambda**, **API Gateway**, **Step Functions**, **Textract**, **Bedrock Claude**, and **EventBridge** makes this pipeline robust, scalable, and intelligent.
 
 ---
@@ -61,7 +64,10 @@ Each component's name directly reflects its role in the architecture.
 
 ---
 
-### 🟪 **Step Function**
+### 🟪 **Step Function** 
+
+![Sample](stepfunctions_graph.png)
+
 
 * Manages and sequences the execution of document processing logic.
 * Ensures that each stage completes before the next begins.
@@ -69,13 +75,13 @@ Each component's name directly reflects its role in the architecture.
 
 Flow inside the Step Function:
 
-1. `extract processor`
-2. `summarize document`
-3. `store summary`
+1. `Textract processor`
+2. `Summarize document`
+3. `Store summary`
 
 ---
 
-### 🟧 **extract processor (Lambda)**
+### 🟧 **Textract processor (Lambda)**
 
 * Fetches the uploaded file from S3.
 * Invokes **Textract** to extract readable text from PDFs, scanned images, or documents.
@@ -90,7 +96,7 @@ Flow inside the Step Function:
 
 ---
 
-### 🟧 **summarize document (Lambda)**
+### 🟧 **Summarize Document (Lambda)**
 
 * Receives extracted text.
 * Sends it to **Claude via Bedrock** to create a coherent, concise summary.
@@ -106,7 +112,7 @@ Flow inside the Step Function:
 
 ---
 
-### 🟧 **store summary (Lambda)**
+### 🟧 **Store Summary (Lambda)**
 
 * Saves the generated summary to the **Output Files S3 Bucket**.
 * Ensures each summary is uniquely identifiable and retrievable.
@@ -163,10 +169,10 @@ Flow inside the Step Function:
    ├── index.html
 
 📁 lambdas/
-   ├── upload_handler.js
-   ├── extract_processor.js
-   ├── summarize_document.js
-   └── store_summary.js
+   ├── upload_handler.py
+   ├── Textract_processor.py
+   ├── summarize_document.py
+   └── store_summary.py
 
 📁 state-machine/
    └── step_function_definition.json
